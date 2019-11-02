@@ -1,6 +1,5 @@
 from pptree import *
-"""
-operations
+""" operations
 "0-9" - numbers
 "a-z" - symbols
 functions:
@@ -131,9 +130,9 @@ def parse(inpStr):
         if bp != None:
             ast.b = bp 
         if ap == None: 
-            ast.a = a
+            ast.a = Tree(a)
         if bp == None:
-            ast.b = b
+            ast.b = Tree(b)
         return ast
         
     else:
@@ -149,6 +148,7 @@ def printTree(tree, parent = None):
             printTree(tree.a, ast)
         if tree.b != None:
             printTree(tree.b, ast)
+        return ast
 #  print(parseTest('123()', []))
 #  print(parseTest('123(456(1, 2), 123)', []))
 #  s = '123'
@@ -160,7 +160,7 @@ s4 = 'mul(sum(kek, lol), 2)'
 #  inp = [s2, s3]
 #  output = [ parse(filterSpaces(el)) for el in inp]
 #  lol = parse(s3)
-lol2 = parse(s4)
+lol2 = parse(filterSpaces(s3))
 print_tree(printTree(lol2))
 
 
