@@ -1,0 +1,8 @@
+(def f a b = (sum a b))
+
+(def c = 2)
+
+(def s = 3)
+
+(def main = (f 1 2) )
+
