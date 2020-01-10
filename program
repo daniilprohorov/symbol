@@ -1,8 +1,13 @@
-(def f a b = (sum a b))
+(typ if Const Expr Expr = Expr)
+(def if True  a    b    = a)
+(def if False a    b    = b)
 
+(typ c = Const)
 (def c = 2)
 
+(typ s = Const)
 (def s = 3)
 
-(def main = (f 1 2) )
+(typ main = Expr)
+(def main = (f 1 2))
 

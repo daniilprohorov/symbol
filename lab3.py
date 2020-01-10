@@ -1,20 +1,28 @@
 import re
+from utils import splitBy, splitTupleBy, splitBlocks, error 
+from checker import match, isMatch, isExpression, isConst, isSymbolT, isConstT, getType
 
 buildIn = {'sum' : lambda a, b : a + b,
         'mul' : lambda a, b : a * b,
         'div' : lambda a, b : a / b}
 
+# data types : const, expr 
+# const: Bool, Int 
+# expr: f a b
+
+
+        
 class Memory:
     def __init__(self):
         self.m = {}
-    def write(self, key, value):
+    def write(self, key, func):
         if key in self.m.keys():
-            if any([ f == value for f in self.m[key]] ):
+            if any([ f == func for f in self.m[key]] ):
                 pass
             else:
-                self.m.[key].append(value)
+                self.m[key].append(func)
         else:
-            self.m[key] = [value]
+            self.m[key] = tuple([func])
     def read(self, key):
         if key in self.m.keys():
             return self.m[key]
@@ -33,11 +41,6 @@ class Stack:
     def pop(self):
         return self.s.pop()
 
-def isSymbolT(val):
-    return (val[1] == 'symbol')
-
-def isNumT(val):
-    return (val[1] == 'num')
 
 def number(val):
     try:
@@ -46,38 +49,47 @@ def number(val):
     except:
         return False
 
-
-
-
+class Func:
+    def __init__(self, args, expr):
+        self.args = args
+        self.expr = expr
+    def __str__(self):
+        return "({}) = {}".format(list(self.args), list(self.expr))
+    def __repr__(self):
+        return self.__str__() 
 
 class Def:
-    def __init__(self, name, args, expr):
+    def __init__(self, name, argsTypes, outType):
         if isSymbolT(name):
             self.name = name[0]
         else:
             error('Name of function {} is not a symbol'.format(name[0]))
-        if all([isSymbolT(arg) for arg in args]):
-            self.args = [arg[0] for arg in args]
-        else:
-            error('Some args of function {} is not a symbol'.format(name[0]))
+        self.argsTypes = [t[0] for t in argsTypes] 
+        self.outType = outType[0]
+        self.funcs = []
 
-        self.expr = expr
+    def addFunc(self, args, out):
+        print(out)
+        if [getType(el) for el in args] == self.argsTypes and getType(out) == self.outType[0]:
+            self.funcs.append(Func(zip(args, self.argsTypes), zip(out, self.outType)))
+        else:
+            error("Type matching in function")
 
     def __str__(self):
-        return "def {} ({}) = {}".format(self.name, ' '.join(self.args), ' '.join([ expr[0] for expr in self.expr]))
+        return "def {} {}".format(self.name, (self.funcs))
     def __repr__(self):
         return self.__str__() 
-
-    def t(self):
-        return "def"
-
-    def toEval(self, args):
-        if len(args) == len(self.args):
-            evalNew = lexToEval(self.expr) 
-            evalNew.args = args
-            return evalNew
-        else:
-            error("Not correct count of arguments")
+#
+#    def t(self):
+#        return "def"
+#
+#    def toEval(self, args):
+#        if len(args) == len(self.args):
+#            evalNew = lexToEval(self.expr) 
+#            evalNew.args = args
+#            return evalNew
+#        else:
+#            error("Not correct count of arguments")
 
 class Eval:
     def __init__(self, name, args):
@@ -86,7 +98,7 @@ class Eval:
         else:
             error('{} is not a symbol'.format(name[0]))
 
-        if all([isSymbolT(arg) or isNumT(arg) for arg in args]):
+        if all([isSymbolT(arg) or isConstT(arg) for arg in args]):
             self.args = [arg[0] for arg in args]
         else:
             error('Some args of function {} is not a symbol or nums'.format(name[0]))
@@ -109,7 +121,7 @@ class Eval:
 
 class Const:
     def __init__(self, val):
-        if isNumT(val):
+        if isConstT(val):
             self.val = val[0]
         else:
             error('{} is not a number'.format(val[0]))
@@ -157,54 +169,6 @@ class Process:
                 return expr
 
 
-
-
-
-
-def splitBy(lst, splitter):
-    acc = []
-    accLocal = []
-    for el in lst:
-        if el == splitter:
-            acc.append(accLocal)
-            accLocal = []
-        else:
-            accLocal.append(el)
-    if accLocal != []:
-        acc.append(accLocal)
-
-    return acc
-
-def splitTupleBy(lst, splitter):
-    a = []
-    b = []
-    toA = True
-    for el in lst:
-        if el == splitter:
-            toA = False
-        elif toA:
-            a.append(el)
-        else:
-            b.append(el)
-
-    return (a, b) 
-
-
-
-def error(msg):
-    raise Exception(msg)
-
-def match(pattern, string):
-    p = re.compile(pattern)
-    matched = p.match(string)
-    if matched:
-        stringMatch = matched.group() 
-        stringNew   = string[matched.end():]
-        return (stringMatch, stringNew)
-    else:
-        #  return error("cant match correct")
-        return None
-
 applyT = ("=", "apply")
 beginT = ("\(", "begin")
 endT = ("\)", "end")
@@ -245,6 +209,15 @@ def define(lstOfLex):
             newAcc = acc[1:-1]
             if newAcc[0][0] == 'def':
                 name_args, block = splitTupleBy(newAcc[1:], applyT)
+                name = name_args[0][0]
+                args = [el[0] for el in name_args[1:]]
+                for defs in returnList:
+                    if defs.name == name:
+                        print(block)
+                        defs.addFunc(args, ' '.join([b[0] for b in block[1:-1]]))
+                acc = []
+            elif newAcc[0][0] == 'typ':
+                name_args, block = splitTupleBy(newAcc[1:], applyT)
                 returnList.append(Def(name_args[0], name_args[1:], block) )
                 acc = []
             else:
@@ -273,7 +246,7 @@ def lexToEval(lstOfLex):
         if bracketsCounter == 0:
             newAcc = acc[1:-1]
             print(newAcc)
-            if isNumT(newAcc[0]) and len(newAcc) == 1:
+            if isConstT(newAcc[0]) and len(newAcc) == 1:
                 return Const(newAcc[0])
             else:
                 return Eval(newAcc[0], newAcc[1:])
@@ -289,12 +262,32 @@ program = open("program", "r")
 #  print(program.read())
 lex = cycleLex(program.read(), [])
 d = define(lex)
+print(d)
 
-P = Process()
-for f in d:
-    P.addDef(f)
+#P = Process()
+#for f in d:
+#    P.addDef(f)
 
-print(P.run())
+#print(P.run())
+
+#print(isConst("-1"))
+#print(isConst("100"))
+#print(isConst("---"))
+#print(isConst("-999"))
+#print(isConst("998987asdf99"))
+#print(isConst("99898abasd799f"))
+
+#print(isConst("True"))
+#print(isConst("234True"))
+#print(isConst("asdlTrasdfue"))
+#print(isConst("False"))
+#print(isConst("lol"))
+
+#print(isExpression("asdfsadf"))
+#print(isExpression("(func (mul a b))"))
+#print(isExpression("func (mul a b) (b c d)"))
+#print(isExpression("1 (mul a b) (b c d)"))
+#print(isExpression("a"))
 
 
 
